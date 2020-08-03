@@ -93,10 +93,45 @@ fmt.Println(p == q)                   // "false"
 
 # 常用关键字
 ## defer
-1. defer关键字的调用时机以及多次调用defer时的执行顺序；
+参考[5.3 defer](https://draveness.me/golang/docs/part2-foundation/ch05-keyword/golang-defer/)
 
+参考[Golang 中的 Defer 必掌握的 7 知识点](https://learnku.com/articles/42255)
 
-2. defer关键字使用传值的方式传递参数时
+1. defer关键字的调用时机，与return谁先谁后
+
+defer在return之后执行。
+
+2. 多次调用defer时的执行顺序；
+
+多次调用defer时，是一个类似与“栈”的关系，也就是先进后出。先调用的defer会被更后执行。
+
+3. defer关键字使用传值的方式传递参数时
+
+Go语言中所有的函数调用都是传值的，defer虽然是关键字，但是也继承了这个特性。
+
+4. defer遇见panic
+
+能够触发defer的是遇见return（或函数体到末尾）和遇见panic。
+
+遇见panic时，会遍历协程的defer链表，并执行defer。在执行defer的过程中，遇到recover则停止panic，返回recover处继续往下执行。如果没有遇到recover，遍历完本协程的defer链表后，向stderr抛出panic信息。
+
+defer最大的作用就是panic后依然有效，可以保证资源一定会被关闭，从而避免一些异常出现的问题。
+
+5. defer中包含panic
+
+panic中仅有最后一个可以被recover捕获。
+
+6. defer下的函数参数包含子函数
+
+## panic
+向调用者报告错误的一般方式是将`error`作为额外的值返回，但如果错误是不可恢复的，或者有时程序就是不能继续运行的情况。
+
+这时就可以使用内建的`panic`函数，会产生一个运行时错误并终止程序，该函数接受一个任意类型的实参，并在程序终止时打印。
+
+当`panic`被调用后，程序将立刻终止当前函数的执行
+
+## recover
+
 
 # 接口
 接口的值由两个部分组成，一个具体的类型和那个类型的值。被称为接口的动态类型和动态值。
