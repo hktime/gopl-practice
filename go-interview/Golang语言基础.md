@@ -202,6 +202,9 @@ recover可以中止panic造成的程序崩溃，它是一个只能在defer中发
 
 recover会使程序从panic中恢复，并返回panic value。导致panic异常的函数不会继续运行，但能正常返回。在未发生panic时调用recover，recover会返回nil。
 
+## select
+一个select语句用来选择哪个case中的发送或接收操作可以被立即执行。类似于switch语句，但是select的case涉及到与channel有关的I/O操作
+
 # 接口
 接口的值由两个部分组成，一个具体的类型和那个类型的值。被称为接口的动态类型和动态值。
 在Go语言中，变量总是被一个定义明确的值初始化，即使接口类型也不例外。对于一个接口的零值,就是它的类型和值的部分都是nil。
@@ -268,9 +271,60 @@ go语言的内存分配核心理念是利用多级缓存将对象根据大小分
 2. 将黑色对象指向的所有对象都标记成灰色，保证该对象和被该对象引用的对象都不会被回收；
 3. 重复上述步骤直到对象图中不存在灰色对象，只剩下黑色的存活对象和白色的垃圾对象，垃圾回收器可以回收白色的垃圾。
 
-# Goroutinue调度
-参考[goroutine调度](https://tiancaiamao.gitbooks.io/go-internals/content/zh/05.1.html)
-Go调度的实现，涉及到几个重要的数据结构。分别是结构体G，结构体M，以及Sched结构体。简称为GMP调度。
+# Goroutinue 和 channel
+Goroutinue 和 channel是go语言并发编程的两大基石，goroutine用于执行并发任务，channel用于goroutine之间的同步和通信。
 
+## goroutine调度
+参考[goroutine调度](https://tiancaiamao.gitbooks.io/go-internals/content/zh/05.1.html)
+
+Go调度的实现，涉及到几个重要的数据结构。分别是结构体G，结构体M，结构体P，以及Sched结构体。简称为GMP调度。
+
+### 结构体G
+G是goroutine的缩写，相当于操作系统中的进程控制块，是对goroutine的抽象。其中包含了栈信息和运行的函数，只要得到CPU就可以运行。
+
+goroutine切换时，上下文信息保存在结构体的sched域中，切换时不必陷入到操作系统内核中，所以保存过程很轻量。结构体中的Gobuf只保存了当前栈指针，程序计数器以及goroutine自身。
+
+### 结构体M
+M是machine的缩写，是对机器的抽象，每个m都是对应到一条操作系统的物理线程。M必须关联了P才可以执行Go代码，但是当它处理阻塞或者系统调用时，可以不需要关联P。
+
+### 结构体P
+P是processor的缩写，代表go代码执行时需要的资源。当M执行go代码时，需要关联一个P。有刚好GOMAXPROCS个P。
+
+### 调度过程
+首先创建一个G对象，G对象保存到P本地队列或者是全局队列。P此时去唤醒一个M，接下来M执行一个调度循环（调用G对象->执行->清理线程->继续找新的goroutine执行）。
+
+## channel
+channel是线程安全的，是“先进先出的”。通过加锁的方式来实现线程安全。
+
+不要通过共享内存来通信，而要通过通信来实现内存共享。
+
+### 单向或双向
+```
+chan T //声明一个双向channel
+chan<- T //声明一个只能用来发送的channel
+<-chan T // 声明一个只能用来接收的channel
+```
+
+### 无缓冲和有缓冲
+```
+ch := make(chan bool) //无缓冲的channel
+ch := make(chan bool, 1) // 带缓冲的channel，且缓冲区大小为1
+```
+对不带缓冲的channel进行的操作实际上可以看作“同步模式”，发送方和接收方要同步就绪，只有在两者都ready的情况下，数据才能在两者间传输。否则，任意一方先行进行发送或接收操作，都会被挂起，等待另一方的出现才能被唤醒。
+
+带缓冲的channel则称为“异步模式”，在缓冲区可用的情况下，发送和接收操作都可以顺利进行。否则，操作的一方同样会被挂起，知道出现相反操作才会被唤醒。
+
+如何读输入
+
+inputReader := bufio.NewReader(os.Stdin)
+input, _ := inputReader.ReadString('\n')
+
+如何对二维数组进行排序
+```
+var intervals [][]int
+sort.Slice(intervals, func(i, j int)bool{
+    return intervals[i][0] < intervals[j][0]
+})
+```
 
 
