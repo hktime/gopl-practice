@@ -314,6 +314,56 @@ ch := make(chan bool, 1) // 带缓冲的channel，且缓冲区大小为1
 
 带缓冲的channel则称为“异步模式”，在缓冲区可用的情况下，发送和接收操作都可以顺利进行。否则，操作的一方同样会被挂起，知道出现相反操作才会被唤醒。
 
+
+# go的编译执行流程
+在golang中，build过程主要由go build执行，完成了源码的编译与可执行文件的生成。
+
+go build接收参数为.go文件或目录，默认情况下编译当前目录下所有.go文件。在main包下执行会生成相应的可执行文件，在非main包下，会做一些检查，将生成的库文件放在缓存目录下，在工作目录下并无新文件生成。
+
+```
+go help build
+-n 不执行地打印流程中用到的命令
+-x 执行并打印流程中用到的命令，要注意下它与-n选项的区别
+-work 打印编译时的临时目录路径，并在结束时保留。默认情况下，编译结束会删除该临时目录。
+```
+
+## 打印执行流程
+使用-n选项在命令不执行的情况下，查看go build的执行流程，如下：
+```
+go build -n main.go
+
+mkdir -p $WORK\b001\
+cat >$WORK\b001\importcfg << 'EOF' # internal        
+# import config
+packagefile fmt=D:\Go\pkg\windows_amd64\fmt.a        
+packagefile runtime=D:\Go\pkg\windows_amd64\runtime.a
+EOF
+cd D:\GoWorkspace
+"D:\\Go\\pkg\\tool\\windows_amd64\\compile.exe" -o "$WORK\\b001\\_pkg_.a" -trimpath "$WORK\\b001=>" -p main -complete -buildid j0ngvybnShLGnMrOSUpT/j0ngvybnShLGnMrOSUpT -dwarf=false -goversion go1.14.1 -D _/D_/GoWorkspace -importcfg "$WORK\\b001\\importcfg" -pack -c=4 "D:\\GoWorkspace\\main.go"
+"D:\\Go\\pkg\\tool\\windows_amd64\\buildid.exe" -w "$WORK\\b001\\_pkg_.a" # internal
+cat >$WORK\b001\importcfg.link << 'EOF' # internal
+packagefile command-line-arguments=$WORK\b001\_pkg_.a
+
+...
+
+packagefile internal/syscall/windows/registry=D:\Go\pkg\windows_amd64\internal\syscall\windows\registry.a
+EOF
+mkdir -p $WORK\b001\exe\
+cd .
+"D:\\Go\\pkg\\tool\\windows_amd64\\link.exe" -o "$WORK\\b001\\exe\\main.exe" -importcfg "$WORK\\b001\\importcfg.link" -s -w -buildmode=exe -buildid=BEvhBXJqCS0TDjrlOn42/j0ngvybnShLGnMrOSUpT/j0ngvybnShLGnMrOSUpT/BEvhBXJqCS0TDjrlOn42 -extld=gcc "$WORK\\b001\\_pkg_.a"
+"D:\\Go\\pkg\\tool\\windows_amd64\\buildid.exe" -w "$WORK\\b001\\exe\\a.out.exe" # internal
+mv $WORK\b001\exe\a.out.exe main.exe
+```
+
+主要由几部分组成，分别是：
+* 创建临时目录，mkdir -p $WORK\b001\
+* 查找依赖信息，cat >$WORK\b001\importcfg
+* 执行源代码编译，"D:\\Go\\pkg\\tool\\windows_amd64\\compile.exe" -o
+* 收集链接库文件，cat >$WORK\b001\importcfg.link
+* 生成可执行文件，"D:\\Go\\pkg\\tool\\windows_amd64\\link.exe" -o
+* 移动可执行文件，mv $WORK\b001\exe\a.out.exe main.exe
+
+
 如何读输入
 
 inputReader := bufio.NewReader(os.Stdin)
