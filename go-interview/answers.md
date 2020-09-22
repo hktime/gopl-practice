@@ -59,6 +59,19 @@ postman
 
 怎么实现
 
+## linux
+### shell脚本调用方式
+三种调用方式，分别是（fork，exec，source）
+
+1. fork(/path/to/script.sh)
+fork是最普通的，运行的时候开一个sub-shell执行调用的脚本，此时parent-shell还在。
+
+2. exec(exec /path/to/script.sh)
+不需要另开一个sub-shell来执行被调用的脚本，父脚本和被调用的脚本在同一个shell内执行，但是使用exec调用一个新脚本以后，父脚本中exec行之后的内容就不会再执行了。也就是exec和source的区别。
+
+3. source(source /path/to/script.sh)
+也是不需要新开一个sub-shell来执行被调用的脚本，执行子脚本后继续执行父脚本，同时子脚本设置的环境变量会影响到父级的环境变量。
+
 Linux命令相关，统计文本行数命令，查找匹配文件
 
 数据库，drop、truncate和delete区别，修改一个字段名
